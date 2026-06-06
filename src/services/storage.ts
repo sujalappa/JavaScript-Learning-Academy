@@ -155,6 +155,37 @@ export async function logout(): Promise<void> {
   }
 }
 
+export async function sendPasswordResetEmail(emailInput: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured) {
+    return { success: false, error: "Supabase is not configured yet. Password reset is not available in guest local mode." };
+  }
+  try {
+    const email = emailInput.includes("@") ? emailInput : `${emailInput.toLowerCase()}@js.academy`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/`,
+    });
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to send reset email." };
+  }
+}
+
+export async function updateUserPassword(passwordInput: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured) {
+    return { success: false, error: "Supabase is not configured." };
+  }
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: passwordInput,
+    });
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to update password." };
+  }
+}
+
 /**
  * Handle Auth Sign In and Sign Up.
  * Merges Guest progression automatically.

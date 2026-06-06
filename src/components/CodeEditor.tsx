@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Play, RotateCcw, Trash2, CheckCircle2, XCircle, AlertCircle, Terminal, Check } from "lucide-react";
+import { Play, RotateCcw, Trash2, CheckCircle2, XCircle, AlertCircle, Terminal, Check, MessageSquare, Loader2, Sparkles } from "lucide-react";
 import { evaluateCode } from "../services/evaluator";
 import type { TestResult } from "../services/evaluator";
+import { aiExplainCodeError } from "../services/ai";
 
 interface CodeEditorProps {
   initialCode: string;
   testCases: any[];
   challengeId: string;
   challengeType: "function" | "class" | "async";
+  challengeDescription?: string;
   onSuccess: () => void; // Called when all tests pass
   onChange?: (code: string) => void; // Added for state sync
+  onAskAiMentor?: (query: string) => void;
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -17,8 +20,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   testCases,
   challengeId,
   challengeType,
+  challengeDescription = "",
   onSuccess,
   onChange,
+  onAskAiMentor,
 }) => {
   const [code, setCode] = useState(initialCode);
   const [logs, setLogs] = useState<string[]>([]);
@@ -26,6 +31,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const [tests, setTests] = useState<TestResult[]>([]);
   const [running, setRunning] = useState(false);
   const [hasRun, setHasRun] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [aiExplanationLoading, setAiExplanationLoading] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const consoleEndRef = useRef<HTMLDivElement>(null);
@@ -37,6 +44,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     setError(null);
     setTests([]);
     setHasRun(false);
+    setAiExplanation(null);
+    setAiExplanationLoading(false);
   }, [initialCode, challengeId]);
 
   useEffect(() => {
@@ -50,21 +59,58 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     setHasRun(true);
     setLogs(["⚡ Compiling and running code..."]);
     setTests([]);
+    setAiExplanation(null);
+    setAiExplanationLoading(false);
 
     try {
       const res = await evaluateCode(code, testCases, challengeType, challengeId);
       
       setLogs(res.logs);
+      
+      let hasFailure = false;
+      let failureDetail = "";
+
       if (res.error) {
         setError(res.error);
+        hasFailure = true;
+        failureDetail = res.error;
       } else if (res.tests) {
         setTests(res.tests);
         if (res.passedAll) {
           onSuccess();
+        } else {
+          hasFailure = true;
+          const failed = res.tests.filter(t => !t.passed);
+          failureDetail = failed.map(t => {
+            if (t.error) return `${t.description}: ${t.error}`;
+            return `${t.description} (Expected: ${JSON.stringify(t.expected)}, Got: ${JSON.stringify(t.actual)})`;
+          }).join("\n");
+        }
+      }
+
+      if (hasFailure && failureDetail) {
+        setAiExplanationLoading(true);
+        try {
+          const explanation = await aiExplainCodeError(code, failureDetail, challengeDescription);
+          setAiExplanation(explanation);
+        } catch (err) {
+          setAiExplanation("Unable to get AI explanation. Please check your network or API Key settings.");
+        } finally {
+          setAiExplanationLoading(false);
         }
       }
     } catch (err: any) {
-      setError(err.message || "Failed to execute code.");
+      const errMsg = err.message || "Failed to execute code.";
+      setError(errMsg);
+      setAiExplanationLoading(true);
+      try {
+        const explanation = await aiExplainCodeError(code, errMsg, challengeDescription);
+        setAiExplanation(explanation);
+      } catch (err) {
+        setAiExplanation("Unable to get AI explanation. Please check your network or API Key settings.");
+      } finally {
+        setAiExplanationLoading(false);
+      }
     } finally {
       setRunning(false);
     }
@@ -378,6 +424,49 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* AI Mentor Error Explainer */}
+          {hasRun && (error || (tests.length > 0 && tests.some(t => !t.passed))) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "12px" }}>
+              {aiExplanationLoading && (
+                <div style={{ padding: "14px", background: "rgba(139, 92, 246, 0.04)", borderRadius: "8px", border: "1px solid rgba(139, 92, 246, 0.15)", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <Loader2 style={{ width: "16px", height: "16px", animation: "spin 1s linear infinite", color: "var(--color-purple)" }} />
+                  <span style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>AI Mentor is analyzing your code and error...</span>
+                </div>
+              )}
+
+              {aiExplanation && (
+                <div style={{ padding: "14px", background: "rgba(139, 92, 246, 0.06)", borderRadius: "8px", border: "1px solid rgba(139, 92, 246, 0.2)", borderLeft: "4px solid var(--color-purple)", display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+                    <div style={{ fontWeight: "bold", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px", fontSize: "0.85rem" }}>
+                      <Sparkles style={{ width: "14px", height: "14px", color: "var(--color-purple)" }} />
+                      AI Mentor Explanation:
+                    </div>
+                    {onAskAiMentor && (
+                      <button
+                        onClick={() => {
+                          let failureDetail = error || "";
+                          if (!failureDetail && tests.length > 0) {
+                            failureDetail = tests.filter(t => !t.passed).map(t => t.description).join(", ");
+                          }
+                          const query = `I'm stuck on this challenge: "${challengeDescription}".\nMy code gets the error: "${failureDetail}".\nCan you help me understand how to fix it?`;
+                          onAskAiMentor(query);
+                        }}
+                        className="cert-view-btn"
+                        style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", padding: "4px 10px", border: "1px solid rgba(139, 92, 246, 0.3)", borderRadius: "6px", cursor: "pointer", background: "rgba(139, 92, 246, 0.1)" }}
+                      >
+                        <MessageSquare style={{ width: "12px", height: "12px" }} />
+                        Ask AI Mentor
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ fontSize: "0.82rem", lineHeight: "1.45", color: "var(--text-secondary)", whiteSpace: "pre-line" }}>
+                    {aiExplanation}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

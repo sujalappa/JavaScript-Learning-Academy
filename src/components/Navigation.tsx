@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { authenticateUserSupabase, logout, isUserAuthenticated, fetchAndUpdateCloudProfile } from "../services/storage";
+import { authenticateUserSupabase, logout, isUserAuthenticated, fetchAndUpdateCloudProfile, sendPasswordResetEmail, updateUserPassword } from "../services/storage";
 import type { UserProfile } from "../services/storage";
 import { SettingsModal } from "./SettingsModal";
-import { isSupabaseConfigured } from "../services/supabase";
+import { isSupabaseConfigured, supabase } from "../services/supabase";
 import { 
   Award, 
   Terminal, 
@@ -43,6 +43,13 @@ export const Navigation: React.FC<NavigationProps> = ({
   const [authError, setAuthError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Password recovery / Forgot password states
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
+  const [isRecoveringPassword, setIsRecoveringPassword] = useState(false);
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [resetSuccessMsg, setResetSuccessMsg] = useState("");
+
   // Fetch updated cloud stats on mount if logged in
   useEffect(() => {
     if (isUserAuthenticated()) {
@@ -50,7 +57,70 @@ export const Navigation: React.FC<NavigationProps> = ({
         onProfileUpdate();
       });
     }
+
+    if (isSupabaseConfigured && supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, _session: any) => {
+        if (event === "PASSWORD_RECOVERY") {
+          setIsRecoveringPassword(true);
+          setIsProfileOpen(true);
+        }
+      });
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
   }, []);
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    
+    if (!emailInput.trim()) {
+      setAuthError("Email address is required");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const res = await sendPasswordResetEmail(emailInput.trim());
+      if (res.success) {
+        setPasswordResetSent(true);
+      } else {
+        setAuthError(res.error || "Failed to send reset email.");
+      }
+    } catch (err: any) {
+      setAuthError(err.message || "An unexpected error occurred.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    
+    if (!newPasswordInput) {
+      setAuthError("Password cannot be empty");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const res = await updateUserPassword(newPasswordInput);
+      if (res.success) {
+        await fetchAndUpdateCloudProfile();
+        onProfileUpdate();
+        setResetSuccessMsg("Password updated successfully!");
+        setNewPasswordInput("");
+      } else {
+        setAuthError(res.error || "Failed to update password.");
+      }
+    } catch (err: any) {
+      setAuthError(err.message || "An unexpected error occurred.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,73 +315,225 @@ export const Navigation: React.FC<NavigationProps> = ({
                   </div>
 
                   {/* Supabase Authentication Panel */}
-                  {userProfile.isGuest ? (
+                  {isRecoveringPassword ? (
                     <div className="profile-auth-box">
                       <h4 className="auth-box-title">
-                        {isSignUp ? <UserCheck style={{ width: "14px", height: "14px" }} /> : <LogIn style={{ width: "14px", height: "14px" }} />} 
-                        {isSignUp ? "Create Academy Account" : "Access Academy Portal"}
+                        <Zap style={{ width: "14px", height: "14px", color: "var(--color-purple)" }} /> 
+                        Create New Password
                       </h4>
                       
-                      <form onSubmit={handleAuthSubmit} className="auth-form">
-                        {isSignUp && (
+                      {resetSuccessMsg ? (
+                        <div style={{ textAlign: "center", padding: "12px 0" }}>
+                          <p style={{ color: "var(--color-green)", fontSize: "0.85rem", fontWeight: "bold" }}>
+                            {resetSuccessMsg}
+                          </p>
+                          <button
+                            onClick={() => {
+                              setIsRecoveringPassword(false);
+                              setResetSuccessMsg("");
+                              setIsProfileOpen(false);
+                            }}
+                            className="primary-btn-green"
+                            style={{ marginTop: "14px", width: "100%", padding: "10px" }}
+                          >
+                            Go to Dashboard
+                          </button>
+                        </div>
+                      ) : (
+                        <form onSubmit={handlePasswordRecoverySubmit} className="auth-form">
+                          <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)", lineHeight: "1.4", marginBottom: "8px" }}>
+                            Please type a secure new password for your JavaScript Learning Academy account.
+                          </p>
+                          <input
+                            type="password"
+                            placeholder="Enter New Password"
+                            value={newPasswordInput}
+                            onChange={(e) => setNewPasswordInput(e.target.value)}
+                            className="form-input"
+                            disabled={loading}
+                            required
+                          />
+                          
+                          {authError && <p className="auth-error-msg">{authError}</p>}
+                          
+                          <button
+                            type="submit"
+                            disabled={loading || !newPasswordInput}
+                            className="primary-btn-purple"
+                            style={{ padding: "10px", width: "100%", fontSize: "0.75rem" }}
+                          >
+                            {loading ? (
+                              <>
+                                <Loader2 style={{ width: "14px", height: "14px", animation: "spin 1s linear infinite" }} />
+                                Updating...
+                              </>
+                            ) : (
+                              "Update Password"
+                            )}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  ) : userProfile.isGuest ? (
+                    isForgotPassword ? (
+                      <div className="profile-auth-box">
+                        <h4 className="auth-box-title">
+                          <UserCheck style={{ width: "14px", height: "14px" }} /> 
+                          Reset Academy Password
+                        </h4>
+                        
+                        {passwordResetSent ? (
+                          <div style={{ textAlign: "center", padding: "12px 0" }}>
+                            <p style={{ color: "var(--color-green)", fontSize: "0.85rem", fontWeight: "bold" }}>
+                              Reset Link Sent!
+                            </p>
+                            <p style={{ color: "var(--text-secondary)", fontSize: "0.78rem", marginTop: "6px", lineHeight: "1.4" }}>
+                              Check your email inbox for instructions to reset your password.
+                            </p>
+                            <button
+                              onClick={() => {
+                                setIsForgotPassword(false);
+                                setPasswordResetSent(false);
+                                setAuthError("");
+                              }}
+                              className="cert-view-btn"
+                              style={{ marginTop: "14px", width: "100%", padding: "8px" }}
+                            >
+                              Back to Log In
+                            </button>
+                          </div>
+                        ) : (
+                          <form onSubmit={handleForgotPasswordSubmit} className="auth-form">
+                            <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)", lineHeight: "1.4", marginBottom: "8px" }}>
+                              Enter your email below, and we will send you a secure link to reset your account password.
+                            </p>
+                            <input
+                              type="text"
+                              placeholder="Email address"
+                              value={emailInput}
+                              onChange={(e) => setEmailInput(e.target.value)}
+                              className="form-input"
+                              disabled={loading}
+                            />
+                            
+                            {authError && <p className="auth-error-msg">{authError}</p>}
+                            
+                            <button
+                              type="submit"
+                              disabled={loading}
+                              className="primary-btn-green"
+                              style={{ padding: "10px", width: "100%", fontSize: "0.75rem" }}
+                            >
+                              {loading ? (
+                                <>
+                                  <Loader2 style={{ width: "14px", height: "14px", animation: "spin 1s linear infinite" }} />
+                                  Sending...
+                                </>
+                              ) : (
+                                "Send Reset Link"
+                              )}
+                            </button>
+                            
+                            <div className="text-center pt-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsForgotPassword(false);
+                                  setAuthError("");
+                                }}
+                                disabled={loading}
+                                className="auth-toggle-link"
+                              >
+                                Back to Log In
+                              </button>
+                            </div>
+                          </form>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="profile-auth-box">
+                        <h4 className="auth-box-title">
+                          {isSignUp ? <UserCheck style={{ width: "14px", height: "14px" }} /> : <LogIn style={{ width: "14px", height: "14px" }} />} 
+                          {isSignUp ? "Create Academy Account" : "Access Academy Portal"}
+                        </h4>
+                        
+                        <form onSubmit={handleAuthSubmit} className="auth-form">
+                          {isSignUp && (
+                            <input
+                              type="text"
+                              placeholder="Choose Username"
+                              value={usernameInput}
+                              onChange={(e) => setUsernameInput(e.target.value)}
+                              className="form-input"
+                              disabled={loading}
+                            />
+                          )}
                           <input
                             type="text"
-                            placeholder="Choose Username"
-                            value={usernameInput}
-                            onChange={(e) => setUsernameInput(e.target.value)}
+                            placeholder="Email address"
+                            value={emailInput}
+                            onChange={(e) => setEmailInput(e.target.value)}
                             className="form-input"
                             disabled={loading}
                           />
-                        )}
-                        <input
-                          type="text"
-                          placeholder="Email address"
-                          value={emailInput}
-                          onChange={(e) => setEmailInput(e.target.value)}
-                          className="form-input"
-                          disabled={loading}
-                        />
-                        <input
-                          type="password"
-                          placeholder="Enter Password"
-                          value={passwordInput}
-                          onChange={(e) => setPasswordInput(e.target.value)}
-                          className="form-input"
-                          disabled={loading}
-                        />
-                        
-                        {authError && <p className="auth-error-msg">{authError}</p>}
-                        
-                        <button
-                          type="submit"
-                          disabled={loading}
-                          className="primary-btn-green"
-                          style={{ padding: "10px", width: "100%", fontSize: "0.75rem" }}
-                        >
-                          {loading ? (
-                            <>
-                              <Loader2 style={{ width: "14px", height: "14px", animation: "spin 1s linear infinite" }} />
-                              Synchronizing...
-                            </>
-                          ) : (
-                            isSignUp ? "Sign Up & Merge Data" : "Log In & Sync"
+                          <input
+                            type="password"
+                            placeholder="Enter Password"
+                            value={passwordInput}
+                            onChange={(e) => setPasswordInput(e.target.value)}
+                            className="form-input"
+                            disabled={loading}
+                          />
+                          
+                          {!isSignUp && (
+                            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "-4px", marginBottom: "8px" }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsForgotPassword(true);
+                                  setAuthError("");
+                                }}
+                                className="auth-toggle-link"
+                                style={{ fontSize: "0.72rem", border: "none", background: "none", cursor: "pointer", padding: 0 }}
+                              >
+                                Forgot Password?
+                              </button>
+                            </div>
                           )}
-                        </button>
-                      </form>
+                          
+                          {authError && <p className="auth-error-msg">{authError}</p>}
+                          
+                          <button
+                            type="submit"
+                            disabled={loading}
+                            className="primary-btn-green"
+                            style={{ padding: "10px", width: "100%", fontSize: "0.75rem" }}
+                          >
+                            {loading ? (
+                              <>
+                                <Loader2 style={{ width: "14px", height: "14px", animation: "spin 1s linear infinite" }} />
+                                Synchronizing...
+                              </>
+                            ) : (
+                              isSignUp ? "Sign Up & Merge Data" : "Log In & Sync"
+                            )}
+                          </button>
+                        </form>
 
-                      <div className="text-center pt-1">
-                        <button
-                          onClick={() => {
-                            setIsSignUp(!isSignUp);
-                            setAuthError("");
-                          }}
-                          disabled={loading}
-                          className="auth-toggle-link"
-                        >
-                          {isSignUp ? "Already have an account? Log In" : "Need an account? Sign Up"}
-                        </button>
+                        <div className="text-center pt-1">
+                          <button
+                            onClick={() => {
+                              setIsSignUp(!isSignUp);
+                              setAuthError("");
+                            }}
+                            disabled={loading}
+                            className="auth-toggle-link"
+                          >
+                            {isSignUp ? "Already have an account? Log In" : "Need an account? Sign Up"}
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )
                   ) : (
                     <button
                       onClick={handleLogout}

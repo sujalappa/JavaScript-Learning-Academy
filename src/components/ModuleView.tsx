@@ -11,7 +11,7 @@ import {
 } from "../services/storage";
 import type { UserProfile, Doubt, Reply } from "../services/storage";
 import { CodeEditor } from "./CodeEditor";
-import { aiEvaluateCode, aiGenerateQuiz, aiChatWithMentor } from "../services/ai";
+import { aiEvaluateCode, aiGenerateQuiz, aiChatWithMentor, aiGenerateChallenge } from "../services/ai";
 import { 
   ArrowLeft, 
   BookOpen, 
@@ -85,6 +85,12 @@ export const ModuleView: React.FC<ModuleViewProps> = ({
   // force editor reload when changing tabs
   const [editorKey, setEditorKey] = useState(0); 
   const [currentCode, setCurrentCode] = useState("");
+  
+  // Custom AI Challenges states
+  const [customDebugging, setCustomDebugging] = useState<any>(null);
+  const [customImplementation, setCustomImplementation] = useState<any>(null);
+  const [topicInput, setTopicInput] = useState("");
+  const [generatingCustom, setGeneratingCustom] = useState(false);
   
   // Sandbox Toggle state
   const [showSandbox, setShowSandbox] = useState(false);
@@ -267,21 +273,26 @@ export const ModuleView: React.FC<ModuleViewProps> = ({
   }, [activeTab, module.id]);
 
   // Determine current active editor template and tests
+  const activeDebugging = customDebugging || module.debugging;
+  const activeImplementation = customImplementation || module.implementation;
+
   let editorInitialCode = "";
   let editorTestCases: any[] = [];
   let challengeType: "function" | "class" | "async" = "function";
   let challengeId = "";
 
   if (activeTab === "debugging") {
-    editorInitialCode = module.debugging.buggyCode || "";
-    editorTestCases = module.debugging.testCases;
-    challengeId = module.debugging.id;
+    editorInitialCode = activeDebugging.buggyCode || "";
+    editorTestCases = activeDebugging.testCases;
+    challengeId = activeDebugging.id;
   } else if (activeTab === "implementation") {
-    editorInitialCode = module.implementation.initialCode || "";
-    editorTestCases = module.implementation.testCases;
-    challengeId = module.implementation.id;
-    if (module.id === "module-6") challengeType = "class";
-    if (module.id === "module-7") challengeType = "async";
+    editorInitialCode = activeImplementation.initialCode || "";
+    editorTestCases = activeImplementation.testCases;
+    challengeId = activeImplementation.id;
+    if (!customImplementation) {
+      if (module.id === "module-6") challengeType = "class";
+      if (module.id === "module-7") challengeType = "async";
+    }
   } else {
     // Standard sandbox template
     editorInitialCode = currentCode || `// Free coding Sandbox\n// Test out concepts from the notes!\nconsole.log("Hello Academy!");\n`;
@@ -352,6 +363,97 @@ export const ModuleView: React.FC<ModuleViewProps> = ({
       onProfileUpdate();
       checkModuleCompletion(module.id, quizPassed, debuggingPassed, true);
     }
+  };
+
+  const handleGenerateCustomChallenge = async (type: "debugging" | "implementation") => {
+    if (!topicInput.trim() || generatingCustom) return;
+    setGeneratingCustom(true);
+    try {
+      const challengeType = type === "debugging" ? "debug" : "implementation";
+      const customChallenge = await aiGenerateChallenge(topicInput, challengeType);
+      
+      if (type === "debugging") {
+        setCustomDebugging(customChallenge);
+        setDebuggingPassed(false);
+      } else {
+        setCustomImplementation(customChallenge);
+        setImplementationPassed(false);
+      }
+      
+      setTopicInput("");
+      setEditorKey(prev => prev + 1); // reload CodeEditor
+    } catch (err) {
+      alert("Failed to generate custom challenge. Please try again.");
+      console.error(err);
+    } finally {
+      setGeneratingCustom(false);
+    }
+  };
+
+  const handleResetCustomChallenge = (type: "debugging" | "implementation") => {
+    if (type === "debugging") {
+      setCustomDebugging(null);
+      const key = `js_academy_progress_${userProfile.username}_${module.id}`;
+      const saved = localStorage.getItem(key);
+      const progress = saved ? JSON.parse(saved) : { debuggingPassed: false };
+      setDebuggingPassed(userProfile.completedModules.includes(module.id) || progress.debuggingPassed);
+    } else {
+      setCustomImplementation(null);
+      const key = `js_academy_progress_${userProfile.username}_${module.id}`;
+      const saved = localStorage.getItem(key);
+      const progress = saved ? JSON.parse(saved) : { implementationPassed: false };
+      setImplementationPassed(userProfile.completedModules.includes(module.id) || progress.implementationPassed);
+    }
+    setEditorKey(prev => prev + 1); // reload CodeEditor
+  };
+
+  const renderCustomChallengeForm = (type: "debugging" | "implementation") => {
+    const isCustomActive = type === "debugging" ? !!customDebugging : !!customImplementation;
+    return (
+      <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--border-color)", display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Sparkles style={{ width: "16px", height: "16px", color: "var(--color-purple)" }} />
+          <h4 style={{ fontSize: "0.95rem", color: "#ffffff", fontWeight: 600 }}>Practice More: Generate Custom Challenge</h4>
+        </div>
+        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0 }}>
+          Want extra practice? Tell the AI Mentor what topic or requirement you want to practice, and it will build a brand new custom challenge for you!
+        </p>
+        <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+          <input
+            type="text"
+            placeholder="e.g., Array filtering, arrow functions, nested loops..."
+            value={topicInput}
+            onChange={(e) => setTopicInput(e.target.value)}
+            disabled={generatingCustom}
+            className="form-input"
+            style={{ flex: 1, fontSize: "0.85rem", padding: "10px 14px" }}
+          />
+          <button
+            onClick={() => handleGenerateCustomChallenge(type)}
+            disabled={generatingCustom || !topicInput.trim()}
+            className="primary-btn-purple"
+            style={{ padding: "10px 18px", fontSize: "0.82rem", display: "inline-flex", alignItems: "center", gap: "6px", cursor: (generatingCustom || !topicInput.trim()) ? "not-allowed" : "pointer" }}
+          >
+            {generatingCustom ? (
+              <Loader2 style={{ width: "14px", height: "14px", animation: "spin 1s linear infinite" }} />
+            ) : (
+              <Sparkles style={{ width: "14px", height: "14px" }} />
+            )}
+            {generatingCustom ? "Generating..." : "Generate"}
+          </button>
+        </div>
+        
+        {isCustomActive && (
+          <button
+            onClick={() => handleResetCustomChallenge(type)}
+            className="cert-view-btn"
+            style={{ alignSelf: "flex-start", padding: "6px 12px", fontSize: "0.75rem", border: "1px solid var(--border-color)", borderRadius: "6px", cursor: "pointer", marginTop: "4px" }}
+          >
+            Reset to Original Module Challenge
+          </button>
+        )}
+      </div>
+    );
   };
 
   // AI Mentor Prompt Sender
@@ -782,9 +884,11 @@ export const ModuleView: React.FC<ModuleViewProps> = ({
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <h3 className="instructions-title">Task Instructions:</h3>
                 <p className="instructions-body-text">
-                  {module.debugging.description}
+                  {activeDebugging.description}
                 </p>
               </div>
+
+              {renderCustomChallengeForm("debugging")}
             </div>
           )}
 
@@ -804,9 +908,11 @@ export const ModuleView: React.FC<ModuleViewProps> = ({
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <h3 className="instructions-title">Task Instructions:</h3>
                 <p className="instructions-body-text">
-                  {module.implementation.description}
+                  {activeImplementation.description}
                 </p>
               </div>
+
+              {renderCustomChallengeForm("implementation")}
             </div>
           )}
 
@@ -1175,8 +1281,13 @@ export const ModuleView: React.FC<ModuleViewProps> = ({
             testCases={editorTestCases}
             challengeId={challengeId}
             challengeType={challengeType}
+            challengeDescription={activeTab === "debugging" ? activeDebugging.description : activeImplementation.description}
             onSuccess={activeTab === "debugging" ? handleDebuggingSuccess : handleImplementationSuccess}
             onChange={handleCodeChange}
+            onAskAiMentor={(query) => {
+              setActiveTab("ai");
+              handleSendAiPrompt(query);
+            }}
           />
         </div>
       )}

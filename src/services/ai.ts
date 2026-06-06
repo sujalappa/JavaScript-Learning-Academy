@@ -156,6 +156,158 @@ You MUST respond with a JSON object containing an array named "questions" like t
   }
 }
 
+export async function aiExplainCodeError(
+  code: string,
+  errorMsg: string,
+  taskDescription: string
+): Promise<string> {
+  const apiKey = getGroqApiKey();
+  if (!apiKey) {
+    return "💡 [Mentor Tip] I am currently in guest fallback mode. Add a Groq API Key to enable live AI explanation for your code errors!";
+  }
+  
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: "system",
+            content: `You are a friendly, encouraging JavaScript coding mentor for beginners. 
+The student is solving a coding challenge with this description:
+"${taskDescription}"
+
+Their code failed execution or failed tests with this error/feedback:
+"${errorMsg}"
+
+Your job is to explain why this happened in a very clear, simple, human-like way.
+Guidance:
+1. Do NOT write the corrected code for them. Let them solve it.
+2. Explain the error conceptually (e.g. if they wrote 'Console.log' instead of 'console.log', explain that JavaScript is case-sensitive and 'Console' is not defined).
+3. Keep it brief (2-4 sentences) and friendly. No robotic formatting.`
+          },
+          {
+            role: "user",
+            content: `My JS Code:\n\`\`\`javascript\n${code}\n\`\`\``
+          }
+        ],
+        temperature: 0.3,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Groq API Error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.choices[0]?.message?.content || "No explanation available.";
+  } catch (err: any) {
+    console.error("AI Error Explanation failed:", err);
+    return `💡 [Mentor Tip] The code failed with: "${errorMsg}". Double check your syntax, function names, and output formatting!`;
+  }
+}
+
+export async function aiGenerateChallenge(
+  topic: string,
+  type: "debug" | "implementation"
+): Promise<any> {
+  const apiKey = getGroqApiKey();
+  if (!apiKey) {
+    // Return a local mock challenge fallback
+    return simulateLocalChallengeGeneration(topic, type);
+  }
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: `You are a JavaScript curriculum creator. Generate a brand new coding challenge on the topic: "${topic}".
+Challenge Type: ${type === "debug" ? "Debugging (find the bug in buggyCode)" : "Implementation (write function from scratch in initialCode)"}
+
+You MUST respond with a JSON object containing the following structure:
+{
+  "id": "ai-gen-challenge",
+  "description": "Clear instructions of what to build or fix.",
+  "initialCode": "The starting code template (e.g. 'function double(n) {\\n  // Write code here\\n}')",
+  "correctCode": "A complete correct solution to the challenge.",
+  "buggyCode": "If type is debugging, the buggy version. Otherwise, leave empty string.",
+  "testCases": [
+    {
+      "input": [2],
+      "expected": 4,
+      "description": "double(2) should return 4"
+    },
+    ... (generate 2 to 3 test cases)
+  ]
+}
+
+CRITICAL: 
+1. Make sure testCases inputs are arrays representing function arguments, e.g. for fn(x, y), input is [x, y].
+2. For debugging, buggyCode must contain a subtle error (typo, wrong operator, scope issue).
+3. The function name in description, initialCode, and testCases MUST be identical so the test runner works.`
+          },
+          {
+            role: "user",
+            content: `Generate a new ${type} challenge on: "${topic}".`
+          }
+        ],
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Groq API Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const resultText = data.choices[0]?.message?.content || "{}";
+    return JSON.parse(resultText);
+  } catch (err) {
+    console.error("AI Challenge generation failed, falling back to local simulator:", err);
+    return simulateLocalChallengeGeneration(topic, type);
+  }
+}
+
+function simulateLocalChallengeGeneration(topic: string, type: "debug" | "implementation"): any {
+  // Simple local simulator fallback
+  const randId = `custom-challenge-${Date.now()}`;
+  if (type === "debug") {
+    return {
+      id: randId,
+      description: `Debug the function: Fix the logical bug in this custom challenge about ${topic}.`,
+      buggyCode: `function customTask(n) {\n  return n * 3; // Bug: should be addition\n}`,
+      correctCode: `function customTask(n) {\n  return n + 3;\n}`,
+      testCases: [
+        { input: [5], expected: 8, description: "customTask(5) should return 8" }
+      ]
+    };
+  } else {
+    return {
+      id: randId,
+      description: `Create a function 'customTask(n)' that takes a number and returns it multiplied by 5.`,
+      initialCode: `function customTask(n) {\n  // Write code here\n  \n}`,
+      correctCode: `function customTask(n) {\n  return n * 5;\n}`,
+      testCases: [
+        { input: [4], expected: 20, description: "customTask(4) should return 20" }
+      ]
+    };
+  }
+}
+
 /**
  * Local Simulator: Code Evaluation
  */
