@@ -1,5 +1,7 @@
 # ⚡ JS.ACADEMY — Gamified JavaScript Learning Platform
 
+**Live Production Link**: [https://java-script-learning-academy.vercel.app/](https://java-script-learning-academy.vercel.app/)
+
 A professional, fully browser-based, gamified JavaScript learning platform for beginners. This project features structured modules, side-by-side sandboxed coding workspaces, MCQ quizzes, debugging exercises, peer-to-peer multiplayer battles, weekly contests, and AI-powered mentoring.
 
 ---
