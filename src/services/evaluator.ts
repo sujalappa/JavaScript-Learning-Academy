@@ -27,6 +27,7 @@ export function evaluateCode(
     // Harness injected code for specific challenge types
     let runnerScript = `
       const logs = [];
+      const userCodeStr = ${JSON.stringify(userCode)};
       const originalLog = console.log;
       console.log = (...args) => {
         logs.push(args.map(arg => {
@@ -117,8 +118,8 @@ export function evaluateCode(
             } else {
               // Standard function call
               // Extract the function name from user code or assume the first function
-              const functionName = userCode.match(/function\\s+([a-zA-Z0-9_$]+)/)?.[1] || 
-                                   userCode.match(/const\\s+([a-zA-Z0-9_$]+)\\s*=\\s*\\(?/)?.[1];
+              const functionName = userCodeStr.match(/function\\s+([a-zA-Z0-9_$]+)/)?.[1] || 
+                                   userCodeStr.match(/const\\s+([a-zA-Z0-9_$]+)\\s*=\\s*\\(?/)?.[1];
               
               if (!functionName) {
                 throw new Error("Could not find function declaration. Verify syntax.");
