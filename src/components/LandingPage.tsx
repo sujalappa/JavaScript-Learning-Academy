@@ -71,7 +71,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Hero Section */}
         <div className="hero-text-block">
           <div className="badge-pill-green">
-            <Sparkles style={{ width: "14px", height: "14px" }} /> Gamified Learning Arena
+            <Sparkles style={{ width: "14px", height: "14px" }} /> Next-Gen JS Academy
           </div>
           <h1 className="hero-title">
             Stop Watching Tutorials. <br />

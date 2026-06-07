@@ -1209,15 +1209,9 @@ export const ModuleView: React.FC<ModuleViewProps> = ({
                   onClick={handleAskForCodeHint}
                   disabled={loadingAI}
                   className="mentor-action-btn-pill purple-border"
+                  style={{ flex: 1 }}
                 >
                   Evaluate Editor Code
-                </button>
-                <button
-                  onClick={() => handleSendAiPrompt("Explain closures and scope in JavaScript")}
-                  disabled={loadingAI}
-                  className="mentor-action-btn-pill"
-                >
-                  Explain Closures
                 </button>
               </div>
 
