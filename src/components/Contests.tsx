@@ -189,19 +189,87 @@ export const Contests: React.FC<ContestsProps> = ({
       {view === "sprint-dashboard" && (
         <>
           <div className="sprint-dashboard-header" style={{ gridColumn: "span 2" }}>
-            <div className="sprint-info-panel-box glass-card" style={{ position: "relative" }}>
+            <div className="sprint-info-panel-box glass-card" style={{ position: "relative", height: "auto", minHeight: "300px", display: "flex", flexDirection: "column", gap: "20px" }}>
               <div style={{ position: "absolute", top: 0, right: 0, padding: "32px", opacity: 0.05, pointerEvents: "none" }}>
                 <Trophy style={{ width: "180px", height: "180px" }} />
               </div>
               
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <span className="sprint-header-badge">
-                  Live Event Active
-                </span>
-                <h2 className="timeline-header-title" style={{ fontSize: "1.6rem" }}>Weekly Algorithms Sprint #12</h2>
-                <p className="node-desc-text" style={{ maxWidth: "450px" }}>
-                  Race against time to solve **3 progressive coding challenges** in under 5 minutes. Climb global ranks and unlock massive XP.
-                </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <span className="sprint-header-badge">
+                    Live Event Active
+                  </span>
+                  <span className="sprint-header-badge" style={{ background: "rgba(168, 85, 247, 0.15)", color: "var(--color-purple)", border: "1px solid rgba(168, 85, 247, 0.25)" }}>
+                    Contest runs at 10:00 PM every Sunday
+                  </span>
+                </div>
+                
+                <h2 className="timeline-header-title" style={{ fontSize: "1.6rem", margin: 0 }}>Weekly Algorithms Sprint</h2>
+                
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <p className="node-desc-text" style={{ maxWidth: "600px", margin: 0 }}>
+                    Race against time to solve **3 progressive coding challenges** in under 5 minutes. Climb global ranks and unlock massive XP.
+                  </p>
+                  
+                  {/* Structured Progressive Coding Challenges Details */}
+                  <div style={{ 
+                    display: "grid", 
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", 
+                    gap: "12px", 
+                    marginTop: "8px" 
+                  }}>
+                    <div style={{ 
+                      padding: "12px 16px", 
+                      borderRadius: "8px", 
+                      background: "rgba(255, 255, 255, 0.02)", 
+                      border: "1px solid rgba(255, 255, 255, 0.05)",
+                      display: "flex", 
+                      flexDirection: "column", 
+                      gap: "4px" 
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "var(--color-green)" }} />
+                        <span style={{ fontSize: "0.65rem", color: "var(--color-green)", fontWeight: 700, textTransform: "uppercase" }}>Challenge 1 (Easy)</span>
+                      </div>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#ffffff" }}>Basic Logic Warm-up</span>
+                      <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Warm up with simple conditions (e.g. verify if number is even).</span>
+                    </div>
+
+                    <div style={{ 
+                      padding: "12px 16px", 
+                      borderRadius: "8px", 
+                      background: "rgba(255, 255, 255, 0.02)", 
+                      border: "1px solid rgba(255, 255, 255, 0.05)",
+                      display: "flex", 
+                      flexDirection: "column", 
+                      gap: "4px" 
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "var(--color-amber)" }} />
+                        <span style={{ fontSize: "0.65rem", color: "var(--color-amber)", fontWeight: 700, textTransform: "uppercase" }}>Challenge 2 (Medium)</span>
+                      </div>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#ffffff" }}>Algorithms & Math</span>
+                      <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Apply absolute difference equations and conditional math checks.</span>
+                    </div>
+
+                    <div style={{ 
+                      padding: "12px 16px", 
+                      borderRadius: "8px", 
+                      background: "rgba(255, 255, 255, 0.02)", 
+                      border: "1px solid rgba(255, 255, 255, 0.05)",
+                      display: "flex", 
+                      flexDirection: "column", 
+                      gap: "4px" 
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "var(--color-rose)" }} />
+                        <span style={{ fontSize: "0.65rem", color: "var(--color-rose)", fontWeight: 700, textTransform: "uppercase" }}>Challenge 3 (Hard)</span>
+                      </div>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#ffffff" }}>Collection Iteration</span>
+                      <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Filter arrays and reduce values to solve complex data challenges.</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="workspace-header select-none" style={{ borderTop: "1px solid var(--border-color)", borderBottom: "none", padding: "16px 0", marginTop: "12px", background: "transparent" }}>
@@ -227,20 +295,22 @@ export const Contests: React.FC<ContestsProps> = ({
                 Upcoming Contests
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {[
-                  { title: "Sunday Syntax Duel", starts: "Starts in 2 days", reward: "+300 XP" },
-                  { title: "Callback Crusade Sprint", starts: "Starts in 5 days", reward: "+400 XP" }
-                ].map((c, idx) => (
-                  <div key={idx} className="certificate-item-row">
-                    <div>
-                      <h4 className="node-main-title" style={{ fontSize: "0.85rem" }}>{c.title}</h4>
-                      <p className="restrict-desc">{c.starts}</p>
-                    </div>
-                    <span className="badge-pill-purple">
-                      {c.reward}
-                    </span>
+                <div className="certificate-item-row" style={{ alignItems: "flex-start", padding: "12px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <h4 className="node-main-title" style={{ fontSize: "0.85rem", color: "#ffffff" }}>
+                      Next Scheduled Contest
+                    </h4>
+                    <p className="restrict-desc" style={{ color: "var(--color-purple)", fontWeight: 600, margin: "2px 0 6px 0" }}>
+                      Sunday to Sunday Schedule
+                    </p>
+                    <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0, lineHeight: "1.4" }}>
+                      The upcoming weekly sprint tournament runs on a Sunday to Sunday schedule. Next scheduled start is Sunday at 10:00 PM.
+                    </p>
                   </div>
-                ))}
+                  <span className="badge-pill-purple" style={{ whiteSpace: "nowrap" }}>
+                    +500 XP
+                  </span>
+                </div>
               </div>
             </div>
           </div>
