@@ -712,15 +712,8 @@ export const LiveBattle: React.FC<LiveBattleProps> = ({
               challengeId={problem.id}
               challengeType="function"
               onSuccess={handleCodeSuccess}
+              onChange={handleCodeChangeLocal}
             />
-            {/* transparent sniffer helpers */}
-            <div style={{ display: "none" }}>
-              <textarea 
-                value={userCode} 
-                onChange={(e) => handleCodeChangeLocal(e.target.value)} 
-              />
-            </div>
-            <EditorSniffer onChange={handleCodeChangeLocal} />
           </div>
 
         </div>
@@ -767,29 +760,4 @@ export const LiveBattle: React.FC<LiveBattleProps> = ({
   );
 };
 
-// sniffer hook
-const EditorSniffer: React.FC<{ onChange: (val: string) => void }> = ({ onChange }) => {
-  useEffect(() => {
-    const checkInterval = setInterval(() => {
-      const textarea = document.querySelector(".editor-ide-container textarea");
-      if (textarea) {
-        clearInterval(checkInterval);
-        
-        const handleInput = (e: Event) => {
-          const val = (e.target as HTMLTextAreaElement).value;
-          onChange(val);
-        };
-        
-        textarea.addEventListener("input", handleInput);
-        
-        return () => {
-          textarea.removeEventListener("input", handleInput);
-        };
-      }
-    }, 500);
-    
-    return () => clearInterval(checkInterval);
-  }, [onChange]);
 
-  return null;
-};
