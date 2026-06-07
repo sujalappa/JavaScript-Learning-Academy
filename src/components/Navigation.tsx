@@ -58,6 +58,27 @@ export const Navigation: React.FC<NavigationProps> = ({
       });
     }
 
+    // Check URL hash for errors (e.g. expired or invalid OTP links)
+    if (window.location.hash) {
+      const hashContent = window.location.hash.substring(1);
+      const params = new URLSearchParams(hashContent);
+      const error = params.get("error");
+      const errorCode = params.get("error_code");
+      const errorDescription = params.get("error_description");
+
+      if (error || errorCode) {
+        setIsProfileOpen(true);
+        setIsForgotPassword(true);
+        setAuthError(
+          errorDescription
+            ? `Reset link error: ${errorDescription.replace(/\+/g, " ")}. Please try requesting a new link.`
+            : "The password reset link is invalid or has expired. Please try requesting a new link."
+        );
+        // Clean up url hash
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+    }
+
     if (isSupabaseConfigured && supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, _session: any) => {
         if (event === "PASSWORD_RECOVERY") {
