@@ -356,11 +356,11 @@ export const LiveBattle: React.FC<LiveBattleProps> = ({
   };
 
   return (
-    <div className="battle-lobby-dialog" style={{ maxWidth: "100%", width: "100%", minHeight: "calc(100vh - 64px)", display: "flex", padding: "40px 16px" }}>
+    <div className="battle-lobby-dialog" style={{ maxWidth: "100%", width: "100%", minHeight: "calc(100vh - 64px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px" }}>
       
       {/* 1. SELECTION SCREEN */}
       {battleMode === "select" && (
-        <div className="selection-lobby-card glass-card">
+        <div className="selection-lobby-card glass-card" style={{ maxWidth: "600px", width: "100%" }}>
           <div className="lobby-header">
             <Trophy style={{ width: "48px", height: "48px", color: "var(--color-amber)", margin: "0 auto", animation: "bounce 2s infinite" }} />
             <h2>Live Battle Arena</h2>
@@ -426,7 +426,7 @@ export const LiveBattle: React.FC<LiveBattleProps> = ({
 
       {/* 2. BOT BATTLE SETUP */}
       {battleMode === "bot-setup" && (
-        <div className="selection-lobby-card glass-card" style={{ maxWidth: "440px" }}>
+        <div className="selection-lobby-card glass-card" style={{ maxWidth: "440px", width: "100%" }}>
           <h3 className="lobby-card-title" style={{ textAlign: "center", marginBottom: "16px" }}>Configure Bot Difficulty</h3>
           
           <div className="difficulty-selectors-grid">
@@ -468,7 +468,7 @@ export const LiveBattle: React.FC<LiveBattleProps> = ({
 
       {/* 3. P2P ROOM SETUP */}
       {battleMode === "p2p-setup" && (
-        <div className="selection-lobby-card glass-card" style={{ maxWidth: "440px" }}>
+        <div className="selection-lobby-card glass-card" style={{ maxWidth: "440px", width: "100%" }}>
           <h3 className="lobby-card-title" style={{ textAlign: "center", marginBottom: "16px" }}>Multiplayer P2P Lobby</h3>
 
           {/* Host Side */}
@@ -532,7 +532,7 @@ export const LiveBattle: React.FC<LiveBattleProps> = ({
 
       {/* 4. P2P LOBBY (WAITING PLAYER) */}
       {battleMode === "p2p-lobby" && (
-        <div className="selection-lobby-card glass-card" style={{ maxWidth: "440px" }}>
+        <div className="selection-lobby-card glass-card" style={{ maxWidth: "440px", width: "100%" }}>
           <div className="lobby-header">
             <h3>Combat Connection Active!</h3>
             <p className="text-highlight-green" style={{ fontSize: "0.75rem", fontWeight: "bold" }}>Direct WebRTC Data Link Established</p>
