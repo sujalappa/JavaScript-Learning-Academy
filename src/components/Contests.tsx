@@ -89,6 +89,7 @@ export const Contests: React.FC<ContestsProps> = ({
 
   // Editor states
   const [editorKey, setEditorKey] = useState(0);
+  const [showForfeitConfirm, setShowForfeitConfirm] = useState(false);
 
   useEffect(() => {
     // Generate countdown ticks
@@ -112,6 +113,7 @@ export const Contests: React.FC<ContestsProps> = ({
     setSprintIndex(0);
     setSprintTimeLeft(300);
     setScoreList([false, false, false]);
+    setShowForfeitConfirm(false);
 
     const timer = setInterval(() => {
       setSprintTimeLeft((prev) => {
@@ -398,18 +400,67 @@ export const Contests: React.FC<ContestsProps> = ({
               </p>
             </div>
 
-            <button
-              onClick={() => {
-                if (window.confirm("Abort Sprint? You will score 0 points.")) {
-                  clearInterval(sprintTimer!);
-                  setView("sprint-dashboard");
-                }
-              }}
-              className="sprint-forfeit-btn"
-              style={{ padding: "12px", marginTop: "16px" }}
-            >
-              Forfeit Sprint
-            </button>
+            {showForfeitConfirm ? (
+              <div style={{ 
+                marginTop: "16px",
+                padding: "12px", 
+                borderRadius: "8px", 
+                background: "rgba(244, 63, 94, 0.05)", 
+                border: "1px solid rgba(244, 63, 94, 0.2)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px"
+              }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--color-rose)", fontWeight: 600 }}>
+                  Abort Sprint? You will score 0 points.
+                </span>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    onClick={() => {
+                      clearInterval(sprintTimer!);
+                      setView("sprint-dashboard");
+                      setShowForfeitConfirm(false);
+                    }}
+                    className="primary-btn-red"
+                    style={{ 
+                      flexGrow: 1, 
+                      padding: "8px", 
+                      fontSize: "0.75rem", 
+                      background: "var(--color-rose)", 
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Yes, Forfeit
+                  </button>
+                  <button
+                    onClick={() => setShowForfeitConfirm(false)}
+                    style={{ 
+                      flexGrow: 1, 
+                      padding: "8px", 
+                      fontSize: "0.75rem", 
+                      background: "transparent", 
+                      color: "var(--text-muted)",
+                      border: "1px solid var(--border-color)",
+                      borderRadius: "6px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowForfeitConfirm(true)}
+                className="sprint-forfeit-btn"
+                style={{ padding: "12px", marginTop: "16px" }}
+              >
+                Forfeit Sprint
+              </button>
+            )}
           </div>
 
           {/* Right Column: Code Editor */}

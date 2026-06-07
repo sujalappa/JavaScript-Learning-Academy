@@ -37,6 +37,9 @@ export function evaluateCode(
         originalLog(...args);
       };
       
+      // Polyfill MATH to prevent uppercase reference errors
+      self.MATH = Math;
+      
       // Inject user code
       ${userCode}
       
